@@ -66,8 +66,12 @@ public class MercadoriaControle {
 			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 		}
 		if (mercadoria.getId() == null) {
-			repositorio.save(mercadoria);
-			return new ResponseEntity<>(HttpStatus.CREATED);
+			if (mercadoria.getCadastro() == null) {
+				mercadoria.setCadastro(new java.util.Date());
+			}
+			Mercadoria salva = repositorio.save(mercadoria);
+			adicionadorLink.adicionarLink(salva);
+			return new ResponseEntity<>(salva, HttpStatus.CREATED);
 		}
 		return new ResponseEntity<>(HttpStatus.CONFLICT);
 	}

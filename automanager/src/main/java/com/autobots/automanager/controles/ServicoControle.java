@@ -66,8 +66,9 @@ public class ServicoControle {
 			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 		}
 		if (servico.getId() == null) {
-			repositorio.save(servico);
-			return new ResponseEntity<>(HttpStatus.CREATED);
+			Servico salvo = repositorio.save(servico);
+			adicionadorLink.adicionarLink(salvo);
+			return new ResponseEntity<>(salvo, HttpStatus.CREATED);
 		}
 		return new ResponseEntity<>(HttpStatus.CONFLICT);
 	}

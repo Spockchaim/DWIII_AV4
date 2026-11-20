@@ -70,8 +70,9 @@ public class EmpresaControle {
 			if (empresa.getCadastro() == null) {
 				empresa.setCadastro(new Date());
 			}
-			repositorio.save(empresa);
-			return new ResponseEntity<>(HttpStatus.CREATED);
+			Empresa salva = repositorio.save(empresa);
+			adicionadorLink.adicionarLink(salva);
+			return new ResponseEntity<>(salva, HttpStatus.CREATED);
 		}
 		return new ResponseEntity<>(HttpStatus.CONFLICT);
 	}

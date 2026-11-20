@@ -113,8 +113,9 @@ public class UsuarioControle {
 		}
 		if (usuario.getId() == null) {
 			codificarCredenciais(usuario);
-			repositorio.save(usuario);
-			return new ResponseEntity<>(HttpStatus.CREATED);
+			Usuario salvo = repositorio.save(usuario);
+			adicionadorLink.adicionarLink(salvo);
+			return new ResponseEntity<>(salvo, HttpStatus.CREATED);
 		}
 		return new ResponseEntity<>(HttpStatus.CONFLICT);
 	}

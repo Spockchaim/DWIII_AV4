@@ -1,7 +1,9 @@
 package com.autobots.automanager.controles;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,12 +19,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.autobots.automanager.entidades.Mercadoria;
+import com.autobots.automanager.entidades.Servico;
 import com.autobots.automanager.entidades.Usuario;
+import com.autobots.automanager.entidades.Veiculo;
 import com.autobots.automanager.entidades.Venda;
 import com.autobots.automanager.modelos.AdicionadorLinkVenda;
 import com.autobots.automanager.modelos.SegurancaUtil;
 import com.autobots.automanager.modelos.VendaAtualizador;
+import com.autobots.automanager.repositorios.MercadoriaRepositorio;
+import com.autobots.automanager.repositorios.ServicoRepositorio;
 import com.autobots.automanager.repositorios.UsuarioRepositorio;
+import com.autobots.automanager.repositorios.VeiculoRepositorio;
 import com.autobots.automanager.repositorios.VendaRepositorio;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +46,15 @@ public class VendaControle {
 
 	@Autowired
 	private UsuarioRepositorio usuarioRepositorio;
+
+	@Autowired
+	private VeiculoRepositorio veiculoRepositorio;
+
+	@Autowired
+	private MercadoriaRepositorio mercadoriaRepositorio;
+
+	@Autowired
+	private ServicoRepositorio servicoRepositorio;
 
 	@Autowired
 	private AdicionadorLinkVenda adicionadorLink;
@@ -92,22 +109,20 @@ public class VendaControle {
 					&& !venda.getFuncionario().getId().equals(logado.getId())) {
 				return new ResponseEntity<>(HttpStatus.FORBIDDEN);
 			}
-			Usuario vendedorManaged = usuarioRepositorio.findById(logado.getId()).orElse(null);
-			venda.setFuncionario(vendedorManaged);
+			venda.setFuncionario(usuarioRepositorio.findById(logado.getId()).orElse(null));
 		} else if (venda.getFuncionario() != null && venda.getFuncionario().getId() != null) {
 			venda.setFuncionario(usuarioRepositorio.findById(venda.getFuncionario().getId()).orElse(null));
 		}
 
-		if (venda.getCliente() != null && venda.getCliente().getId() != null) {
-			venda.setCliente(usuarioRepositorio.findById(venda.getCliente().getId()).orElse(null));
-		}
+		resolverReferencias(venda);
 
 		if (venda.getId() == null) {
 			if (venda.getCadastro() == null) {
 				venda.setCadastro(new Date());
 			}
-			repositorio.save(venda);
-			return new ResponseEntity<>(HttpStatus.CREATED);
+			Venda salva = repositorio.save(venda);
+			adicionadorLink.adicionarLink(salva);
+			return new ResponseEntity<>(salva, HttpStatus.CREATED);
 		}
 		return new ResponseEntity<>(HttpStatus.CONFLICT);
 	}
@@ -121,10 +136,15 @@ public class VendaControle {
 		}
 		Venda venda = repositorio.findById(atualizacao.getId()).orElse(null);
 		if (venda != null) {
+			if (atualizacao.getFuncionario() != null && atualizacao.getFuncionario().getId() != null) {
+				atualizacao.setFuncionario(usuarioRepositorio.findById(atualizacao.getFuncionario().getId()).orElse(null));
+			}
+			resolverReferencias(atualizacao);
 			VendaAtualizador atualizador = new VendaAtualizador();
 			atualizador.atualizar(venda, atualizacao);
-			repositorio.save(venda);
-			return new ResponseEntity<>(HttpStatus.OK);
+			Venda salva = repositorio.save(venda);
+			adicionadorLink.adicionarLink(salva);
+			return new ResponseEntity<>(salva, HttpStatus.OK);
 		}
 		return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 	}
@@ -139,6 +159,38 @@ public class VendaControle {
 			return new ResponseEntity<>(HttpStatus.OK);
 		}
 		return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+	}
+
+	private void resolverReferencias(Venda venda) {
+		if (venda.getCliente() != null && venda.getCliente().getId() != null) {
+			venda.setCliente(usuarioRepositorio.findById(venda.getCliente().getId()).orElse(null));
+		}
+		if (venda.getVeiculo() != null && venda.getVeiculo().getId() != null) {
+			Veiculo v = veiculoRepositorio.findById(venda.getVeiculo().getId()).orElse(null);
+			venda.setVeiculo(v);
+		}
+		if (venda.getMercadorias() != null && !venda.getMercadorias().isEmpty()) {
+			Set<Mercadoria> resolvidas = new HashSet<>();
+			for (Mercadoria m : venda.getMercadorias()) {
+				if (m.getId() != null) {
+					mercadoriaRepositorio.findById(m.getId()).ifPresent(resolvidas::add);
+				} else {
+					resolvidas.add(m);
+				}
+			}
+			venda.setMercadorias(resolvidas);
+		}
+		if (venda.getServicos() != null && !venda.getServicos().isEmpty()) {
+			Set<Servico> resolvidos = new HashSet<>();
+			for (Servico s : venda.getServicos()) {
+				if (s.getId() != null) {
+					servicoRepositorio.findById(s.getId()).ifPresent(resolvidos::add);
+				} else {
+					resolvidos.add(s);
+				}
+			}
+			venda.setServicos(resolvidos);
+		}
 	}
 
 	private boolean podeLerVenda(Usuario logado, Venda venda) {
