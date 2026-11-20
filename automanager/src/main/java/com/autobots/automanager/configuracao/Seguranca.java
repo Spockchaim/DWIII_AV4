@@ -30,13 +30,28 @@ public class Seguranca extends WebSecurityConfigurerAdapter {
 	@Autowired
 	private ProvedorJwt provedorJwt;
 
-	private static final String[] rotasPublicas = { "/", "/cadastrar-usuario", "/obter-usuarios" };
+	private static final String[] rotasPublicas = {
+			"/",
+			"/login",
+			"/swagger-ui/**",
+			"/swagger-ui.html",
+			"/v3/api-docs/**",
+			"/h2-console/**"
+	};
+
+	@Bean
+	public BCryptPasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
 
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		http.cors().and().csrf().disable();
+		http.headers().frameOptions().sameOrigin();
 
-		http.authorizeHttpRequests().antMatchers(rotasPublicas).permitAll().anyRequest().authenticated();
+		http.authorizeHttpRequests()
+				.antMatchers(rotasPublicas).permitAll()
+				.anyRequest().authenticated();
 
 		http.addFilter(new Autenticador(authenticationManager(), provedorJwt));
 		http.addFilter(new Autorizador(authenticationManager(), provedorJwt, servico));
@@ -46,7 +61,7 @@ public class Seguranca extends WebSecurityConfigurerAdapter {
 
 	@Override
 	protected void configure(AuthenticationManagerBuilder autenticador) throws Exception {
-		autenticador.userDetailsService(servico).passwordEncoder(new BCryptPasswordEncoder());
+		autenticador.userDetailsService(servico).passwordEncoder(passwordEncoder());
 	}
 
 	@Bean

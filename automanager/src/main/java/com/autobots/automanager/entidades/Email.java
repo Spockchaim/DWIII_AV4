@@ -6,14 +6,20 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 
-import lombok.Data;
+import org.springframework.hateoas.RepresentationModel;
 
-@Data
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+@EqualsAndHashCode(callSuper = false)
 @Entity
-public class Cliente {
+public class Email extends RepresentationModel<Email> {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-	@Column
-	private String nome;
+	@Column(nullable = false)
+	private String endereco;
 }

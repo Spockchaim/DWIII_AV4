@@ -8,21 +8,29 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import com.autobots.automanager.entidades.Credencial;
+import com.autobots.automanager.entidades.CredencialUsuarioSenha;
 import com.autobots.automanager.entidades.Usuario;
-import com.autobots.automanager.modelos.Perfil;
+import com.autobots.automanager.enumeracoes.PerfilUsuario;
 
 @SuppressWarnings("serial")
 public class UserDetailsImpl implements UserDetails {
 	private Usuario usuario;
+	private CredencialUsuarioSenha credencial;
 
-	public UserDetailsImpl(Usuario usuario) {
+	public UserDetailsImpl(Usuario usuario, CredencialUsuarioSenha credencial) {
 		this.usuario = usuario;
+		this.credencial = credencial;
+	}
+
+	public Usuario getUsuario() {
+		return this.usuario;
 	}
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
 		List<SimpleGrantedAuthority> autoridades = new ArrayList<>();
-		for (Perfil perfil : usuario.getPerfis()) {
+		for (PerfilUsuario perfil : usuario.getPerfis()) {
 			autoridades.add(new SimpleGrantedAuthority(perfil.name()));
 		}
 		return autoridades;
@@ -30,12 +38,12 @@ public class UserDetailsImpl implements UserDetails {
 
 	@Override
 	public String getPassword() {
-		return usuario.getCredencial().getSenha();
+		return credencial != null ? credencial.getSenha() : "";
 	}
 
 	@Override
 	public String getUsername() {
-		return usuario.getCredencial().getNomeUsuario();
+		return credencial != null ? credencial.getNomeUsuario() : "";
 	}
 
 	@Override
@@ -55,6 +63,15 @@ public class UserDetailsImpl implements UserDetails {
 
 	@Override
 	public boolean isEnabled() {
-		return true;
+		if (credencial == null) {
+			return false;
+		}
+		for (Credencial c : usuario.getCredenciais()) {
+			if (c instanceof CredencialUsuarioSenha
+					&& ((CredencialUsuarioSenha) c).getNomeUsuario().equals(credencial.getNomeUsuario())) {
+				return !c.isInativo();
+			}
+		}
+		return !credencial.isInativo();
 	}
 }
